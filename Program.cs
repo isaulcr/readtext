@@ -20,10 +20,6 @@ namespace readtext
             //iniciando lectura de launcher
             int milliseconds = 300000;
 
-            Console.WriteLine("Indique coordenada X (115):");
-            int X = Int32.Parse(Console.ReadLine().ToString());
-            Console.WriteLine("Indique coordenada Y (824):");
-            int Y = Int32.Parse(Console.ReadLine().ToString());
 
             while (true)
             {
@@ -31,12 +27,12 @@ namespace readtext
                 Thread.Sleep(milliseconds);
             }
 
-            void GetCalculos()
+            async void GetCalculos()
             {
                 double porcAnterior = GetPorcentajeBD();
                 double diferencia = 0;
                 double porcentaje_restante = 0;
-                string porcLauncher = GetPorcentaje();
+                string porcLauncher = await GetPorcentaje();
                 string minutos_restantes = "0";
                 porcLauncher = Regex.Replace(porcLauncher, "[.]", ",");
                 porcLauncher = Regex.Replace(porcLauncher, "[n]", string.Empty);
@@ -56,23 +52,7 @@ namespace readtext
                             }
                             porcentaje_restante = 100 - porcentaje_actual;
                             string porcRestante = porcentaje_restante.ToString();
-                            if (porcentaje_restante >= 10)
-                            {
-                                if (porcRestante.Length > 5)
-                                {
-                                    porcRestante = porcRestante.Substring(0, 5);
-                                    porcLauncher = porcLauncher.Substring(0, 5);
-                                }
-                            }
-                            else
-                            {
-                                if (porcRestante.Length > 4)
-                                {
-                                    porcRestante = porcRestante.Substring(0, 4);
-                                    porcLauncher = porcLauncher.Substring(0, 4);
-
-                                }
-                            }
+                          
                             porcentaje_restante = double.Parse(porcRestante);
 
                             diferencia = (porcentaje_actual - porcAnterior);
@@ -99,34 +79,27 @@ namespace readtext
                 Console.WriteLine($"Minutos restantes: {minutos_restantes}");
             }
 
-            string GetPorcentaje()
+            async Task<string> GetPorcentaje()
             {
-                string porcLauncher = "";
-                Console.Clear();
-                Console.WriteLine("Leyendo porcentaje desde el launcher...");
-                Bitmap memoryImage;
-                memoryImage = new Bitmap(93, 39);
-                System.Drawing.Size s = new System.Drawing.Size(memoryImage.Width, memoryImage.Height);
-                Graphics memoryGraphics = Graphics.FromImage(memoryImage);
-                memoryGraphics.CopyFromScreen(X, Y, 0, 0, s);
+                var url = "https://patch.dboglobal.to:5000/bossProgress";
 
-                string fileName = string.Format(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + @"\imagen.png");
+                using (var client = new HttpClient())
+                {
+                    client.BaseAddress = new Uri(url);
 
-                // Guarda el archivo
-                memoryImage.Save(fileName);
+                    HttpResponseMessage response = await client.GetAsync(url);
 
-                //LEER PORCENTAJE
-                string plainText = "";
+                    if (response.IsSuccessStatusCode)
+                    {
+                        string strResult = await response.Content.ReadAsStringAsync();
 
-
-                var ocrengine = new TesseractEngine(@".\tessdata", "eng", EngineMode.Default);
-                ocrengine.SetVariable("tessedit_char_whitelist", "0123456789.");
-
-
-                var img = Pix.LoadFromFile(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + @"\imagen.png");
-                var res = ocrengine.Process(img);
-                plainText = res.GetText();
-                return plainText;
+                        return strResult;
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
             }
 
             double GetPorcentajeBD()
@@ -149,9 +122,7 @@ namespace readtext
             {
                 string[] tiempo = minutos_restantes.Split(":");
 
-
                 DateTime actual = DateTime.Now;
-
 
                 string peru = actual.AddHours(Int32.Parse(tiempo[0]) - 2).AddMinutes(Int32.Parse(tiempo[1])).ToString("t");
                 string ven = actual.AddHours(Int32.Parse(tiempo[0]) - 1).AddMinutes(Int32.Parse(tiempo[1])).ToString("t");
