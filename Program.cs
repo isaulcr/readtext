@@ -1,11 +1,5 @@
-﻿using Tesseract;
-using MySqlConnector;
-using System;
-using System.Drawing;
+﻿using MySqlConnector;
 using System.Text.RegularExpressions;
-using YamlDotNet.Core;
-using Patagames.Ocr.Enums;
-using Patagames.Ocr;
 
 namespace readtext
 {
@@ -23,60 +17,73 @@ namespace readtext
 
             while (true)
             {
+                Console.Clear();
                 GetCalculos();
+                Console.WriteLine("Eluney Dev - Boss Progress... ->"+DateTime.Now.ToString("T"));
                 Thread.Sleep(milliseconds);
             }
 
             async void GetCalculos()
             {
+
                 double porcAnterior = GetPorcentajeBD();
                 double diferencia = 0;
                 double porcentaje_restante = 0;
                 string porcLauncher = await GetPorcentaje();
-                string minutos_restantes = "0";
-                porcLauncher = Regex.Replace(porcLauncher, "[.]", ",");
-                porcLauncher = Regex.Replace(porcLauncher, "[n]", string.Empty);
-                porcLauncher = Regex.Replace(porcLauncher, "[%]", string.Empty);
-
-                if (porcLauncher != "" && float.Parse(porcLauncher) != 100)
+                if (porcLauncher == "100" || porcLauncher == "0")
                 {
-                    try
+                    UpdateData2(porcLauncher);
+                }
+                else
+                {
+                    string minutos_restantes = "0";
+                    porcLauncher = Regex.Replace(porcLauncher, "[.]", ",");
+                    porcLauncher = Regex.Replace(porcLauncher, "[n]", string.Empty);
+                    porcLauncher = Regex.Replace(porcLauncher, "[%]", string.Empty);
+
+                    if (porcLauncher != "" && float.Parse(porcLauncher) != 100)
                     {
-                        float porcentaje_actual = float.Parse(porcLauncher);
-
-                        if (porcAnterior != porcentaje_actual)
+                        try
                         {
-                            if (porcentaje_actual == 0)
+                            float porcentaje_actual = float.Parse(porcLauncher);
+
+                            if (porcAnterior != porcentaje_actual)
                             {
-                                porcAnterior = 0;
+                                if (porcentaje_actual == 0)
+                                {
+                                    porcAnterior = 0;
+                                }
+                                porcentaje_restante = 100 - porcentaje_actual;
+                                string porcRestante = porcentaje_restante.ToString();
+
+                                porcentaje_restante = double.Parse(porcRestante);
+
+                                diferencia = (porcentaje_actual - porcAnterior);
+                                diferencia = diferencia / 5;
+                                double minutos = (100 - porcentaje_actual) / diferencia;
+                                if (minutos != double.PositiveInfinity)
+                                {
+                                    TimeSpan result = TimeSpan.FromMinutes(minutos);
+                                    minutos_restantes = result.ToString("hh':'mm");
+
+                                }
+
+
+
+
+                                UpdateData(porcAnterior, porcentaje_actual, porcentaje_restante, minutos_restantes);
                             }
-                            porcentaje_restante = 100 - porcentaje_actual;
-                            string porcRestante = porcentaje_restante.ToString();
-                          
-                            porcentaje_restante = double.Parse(porcRestante);
-
-                            diferencia = (porcentaje_actual - porcAnterior);
-                            diferencia = diferencia / 5;
-                            double minutos = (100 - porcentaje_actual) / diferencia;
-
-                            TimeSpan result = TimeSpan.FromMinutes(minutos);
-                            minutos_restantes = result.ToString("hh':'mm");
-                            string hora_salida = "2023-10-30 02:25:34";
-
-
-
-                            UpdateData(porcAnterior, porcentaje_actual, porcentaje_restante, minutos_restantes);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(ex.ToString());
                         }
                     }
-                    catch (Exception)
-                    {
-                        throw;
-                    }
+                    Console.WriteLine($"Porcentaje de Launcher: {porcLauncher}");
+                    Console.WriteLine($"Porcentaje de BD: {porcAnterior}");
+                    Console.WriteLine($"Porcentaje restante: {porcentaje_restante}");
+                    Console.WriteLine($"Minutos restantes: {minutos_restantes}");
                 }
-                Console.WriteLine($"Porcentaje de Launcher: {porcLauncher}");
-                Console.WriteLine($"Porcentaje de BD: {porcAnterior}");
-                Console.WriteLine($"Porcentaje restante: {porcentaje_restante}");
-                Console.WriteLine($"Minutos restantes: {minutos_restantes}");
             }
 
             async Task<string> GetPorcentaje()
@@ -97,7 +104,7 @@ namespace readtext
                     }
                     else
                     {
-                        return null;
+                        return "0";
                     }
                 }
             }
@@ -134,13 +141,14 @@ namespace readtext
                     {
                         con.Open();
 
-                        string stm = "Update DBO_dragon set porcentaje_anterior = '" + porcAnterior
-                          + "',porcentaje_actual='" + porcentaje_actual
-                          + "',porcentaje_restante='" + porcentaje_restante
-                          + "',tiempo_restante='" + minutos_restantes
-                          + "',hora_salida_peru = '" + peru + "'"
-                          + ",hora_salida_venezuela = '" + ven + "'"
-                          + ",hora_salida_chile = '" + chile + "'";
+                        string stm = $@"Update DBO_dragon set 
+                           porcentaje_anterior = '{porcAnterior}'
+                          ,porcentaje_actual='{porcentaje_actual}
+                          ,porcentaje_restante='{porcentaje_restante}'
+                          ,tiempo_restante='{minutos_restantes}'
+                          ,hora_salida_peru ='{peru}' 
+                          ,hora_salida_venezuela = '{ven}'
+                          ,hora_salida_chile ='{chile}'";
 
 
                         MySqlCommand cmdd = new MySqlCommand(stm, con);
@@ -149,13 +157,11 @@ namespace readtext
 
                     }
                     catch (MySqlException ex)
-                    {
-                        Console.WriteLine("Error: {0}", ex.ToString());
+                    {Console.WriteLine("Error: { 0}   ", ex.ToString());
                         return false;
                     }
                     finally
                     {
-
                         if (con != null)
                         {
                             con.Close();
@@ -164,12 +170,45 @@ namespace readtext
                     }
                 }
                 return false;
-
             }
 
+            bool UpdateData2(string porc)
+            {
+
+                try
+                {
+                    con.Open();
+
+                    string stm = "Update DBO_dragon set porcentaje_anterior = '" + porc + "',porcentaje_actual='" + porc + "',porcentaje_restante='0',tiempo_restante='0',hora_salida_peru = 'Ahora',hora_salida_venezuela = 'Ahora',hora_salida_chile = 'Ahora'";
+                    MySqlCommand cmdd = new MySqlCommand(stm, con);
+                    string version = Convert.ToString(cmdd.ExecuteScalar());
+
+                    Console.WriteLine($"Porcentaje de Launcher: {porc}");
+                    Console.WriteLine($"Porcentaje de BD: {porc}");
+                    Console.WriteLine($"Porcentaje restante: {porc}");
+                    Console.WriteLine($"Minutos restantes: {porc}");
+                    
+                    return true;
+
+                }
+                catch (MySqlException ex)
+                {
+                    Console.WriteLine("Error: {0}", ex.ToString());
+                    return false;
+                }
+                finally
+                {
+
+                    if (con != null)
+                    {
+                        con.Close();
+                    }
+
+                }
+            }
 
         }
 
-
     }
+
 }

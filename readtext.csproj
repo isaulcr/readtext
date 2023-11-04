@@ -9,10 +9,6 @@
 
   <ItemGroup>
     <PackageReference Include="MySqlConnector" Version="2.2.7" />
-    <PackageReference Include="System.Drawing.Common" Version="7.0.0" />
-    <PackageReference Include="Tesseract" Version="5.2.0" />
-    <PackageReference Include="Tesseract.Net.SDK" Version="4.5.411" />
-    <PackageReference Include="YamlDotNet" Version="13.7.1" />
   </ItemGroup>
 
   <ItemGroup>
