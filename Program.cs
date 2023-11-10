@@ -5,21 +5,21 @@ namespace readtext
 {
     class Program
     {
-        private static string cs = @"server=184.175.93.196;userid=eluucle2_isaul;password=!!Rainbow123!!;database=eluucle2_inventario";
+        private static string cs = @"server=45.86.37.28;userid=eluucle2_isaul;password=!!Rainbow123!!;database=eluucle2_inventario";
 
         static void Main(string[] args)
         {
             using var con = new MySqlConnection(cs);
 
             //iniciando lectura de launcher
-            int milliseconds = 300000;
+            int milliseconds = 3000;
 
 
             while (true)
             {
                 Console.Clear();
                 GetCalculos();
-                Console.WriteLine("Eluney Dev - Boss Progress... ->"+DateTime.Now.ToString("T"));
+                Console.WriteLine("Eluney Dev - Boss Progress... ->" + DateTime.Now.ToString("T"));
                 Thread.Sleep(milliseconds);
             }
 
@@ -88,40 +88,65 @@ namespace readtext
 
             async Task<string> GetPorcentaje()
             {
-                var url = "https://patch.dboglobal.to:5000/bossProgress";
-
-                using (var client = new HttpClient())
+                try
                 {
-                    client.BaseAddress = new Uri(url);
+                    var url = "https://patch.dboglobal.to:5000/bossProgress";
 
-                    HttpResponseMessage response = await client.GetAsync(url);
-
-                    if (response.IsSuccessStatusCode)
+                    using (var client = new HttpClient())
                     {
-                        string strResult = await response.Content.ReadAsStringAsync();
+                        client.BaseAddress = new Uri(url);
 
-                        return strResult;
-                    }
-                    else
-                    {
-                        return "0";
+                        HttpResponseMessage response = await client.GetAsync(url);
+                        if (response.IsSuccessStatusCode)
+                        {
+                            string strResult = await response.Content.ReadAsStringAsync();
+
+                            return strResult;
+                        }
+                        else
+                        {
+                            return "0";
+
+                        }
                     }
                 }
+                catch (HttpRequestException e)
+                {
+                    Console.WriteLine("\nException Caught!");
+                    Console.WriteLine("Message :{0} ", e.Message);
+                    return "0";
+                }
+
             }
+
+
 
             double GetPorcentajeBD()
             {
                 double porcAnterior = 0.0;
                 //leer ultimo %
-                con.Open();
-                string sql = "SELECT * FROM DBO_dragon";
-                using var cmd = new MySqlCommand(sql, con);
-                using MySqlDataReader rdr = cmd.ExecuteReader();
-                while (rdr.Read())
+                try
                 {
-                    porcAnterior = double.Parse(rdr[1].ToString());
+                    if (con.State.ToString() != "Connecting")
+                    {
+                        con.Open();
+                    }
+                   
+                    string sql = "SELECT * FROM DBO_dragon";
+                    using var cmd = new MySqlCommand(sql, con);
+                    using MySqlDataReader rdr = cmd.ExecuteReader();
+                    while (rdr.Read())
+                    {
+                        porcAnterior = double.Parse(rdr[1].ToString());
+                    }
+                    con.Close();
                 }
-                con.Close();
+                catch (MySqlException ex)
+                {
+
+                    Console.WriteLine("sin conexion");
+                }
+
                 return porcAnterior;
             }
 
@@ -141,14 +166,14 @@ namespace readtext
                     {
                         con.Open();
 
-                        string stm = $@"Update DBO_dragon set 
-                           porcentaje_anterior = '{porcAnterior}'
-                          ,porcentaje_actual='{porcentaje_actual}
-                          ,porcentaje_restante='{porcentaje_restante}'
-                          ,tiempo_restante='{minutos_restantes}'
-                          ,hora_salida_peru ='{peru}' 
-                          ,hora_salida_venezuela = '{ven}'
-                          ,hora_salida_chile ='{chile}'";
+                        string stm = $@"Update DBO_dragon set porcentaje_anterior = '" +
+                            porcAnterior + "',porcentaje_actual='" +
+                            porcentaje_actual + "',porcentaje_restante='" +
+                            porcentaje_restante + "',tiempo_restante='" +
+                            minutos_restantes + "',hora_salida_peru ='" +
+                            peru + "' ,hora_salida_venezuela = '" +
+                            ven + "',hora_salida_chile ='" +
+                            chile + "'";
 
 
                         MySqlCommand cmdd = new MySqlCommand(stm, con);
@@ -157,7 +182,8 @@ namespace readtext
 
                     }
                     catch (MySqlException ex)
-                    {Console.WriteLine("Error: { 0}   ", ex.ToString());
+                    {
+                        Console.WriteLine("sin conexion");
                         return false;
                     }
                     finally
@@ -187,13 +213,13 @@ namespace readtext
                     Console.WriteLine($"Porcentaje de BD: {porc}");
                     Console.WriteLine($"Porcentaje restante: {porc}");
                     Console.WriteLine($"Minutos restantes: {porc}");
-                    
+
                     return true;
 
                 }
                 catch (MySqlException ex)
                 {
-                    Console.WriteLine("Error: {0}", ex.ToString());
+                    Console.WriteLine("sin conexion");
                     return false;
                 }
                 finally
